@@ -802,4 +802,5 @@ if !g:locator_disable_mappings
 endif
 
 autocmd FileType * call <SID>OnBufEnter()
+autocmd BufEnter * call <SID>OnBufEnter()
 

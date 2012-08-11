@@ -1,6 +1,6 @@
 *locator.txt* 
 
-Plugin that shows yuu full "path" to the cursor, including folds, classes,
+Plugin that shows you full "path" to the cursor, including folds, classes,
 functions, and more.
 
 There are already several plugins that show you name of the
@@ -111,7 +111,7 @@ g:locator_disable_mappings (default: 0)
 ========================================================================
 MAPPINGS                                                *locator-mappings*
 
-Currently just one mapping is available:  gl  (from "get location"). Press it
+Currently just one mapping is available:  gl  (from "get location"). Type it
 in normal mode and locator will show you where currently are your cursor.
 
 
