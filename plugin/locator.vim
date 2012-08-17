@@ -162,6 +162,9 @@ let g:locator_items = {
 
 let s:cur_items = []
 
+let g:iLocatorVersion = 120
+let g:loaded_locator  = 1
+
 
 " **********************************************************************************
 "  EVENT HANDLERS
@@ -281,6 +284,74 @@ endfunction
 " **********************************************************************************
 "  UTILITY FUNCTIONS
 " **********************************************************************************
+
+" -------------- folds ---------------
+
+" returns list with found folds:
+"
+" [
+"  0:{
+"     'line': <linenum>,
+"     'closed': 1 or 0
+"    },
+"  1:{
+"     'line': <linenum>,
+"     'closed': 1 or 0
+"    },
+"    ...
+" ]
+"
+function! <SID>GetFoldsState(iStartLine, iEndLine)
+   let lRet = []
+
+   let lSrcPos = getpos('.')
+
+   let iPrevLineNum = -1
+
+   call <SID>SetCursor(a:iStartLine, 0)
+   while 1
+
+      silent! normal! zj
+
+      let lCurPos = getpos('.')
+      if lCurPos[1] > a:iEndLine || lCurPos[1] == iPrevLineNum
+         break
+      endif
+
+      let dCurItem = {
+               \     'line' : lCurPos[1],
+               \     'closed' : (foldclosed(lCurPos[1]) != -1 ? 1 : 0)
+               \  }
+
+      call add(lRet, dCurItem)
+
+      let iPrevLineNum = lCurPos[1]
+
+   endwhile
+
+   call setpos('.', lSrcPos)
+
+   return lRet
+endfunction
+
+function! <SID>RestoreFoldsState(lState)
+   for dCurItem in a:lState
+      call <SID>SetCursor(dCurItem['line'], 0)
+
+      if dCurItem['closed']
+         if foldclosed('.') == -1
+            normal! zc
+         endif
+      else
+         if foldclosed('.') != -1
+            normal! zo
+         endif
+      endif
+      "call confirm(1)
+   endfor
+endfunction
+
+" ------------------------------------
 
 function! <SID>SetHL(sHL)
    exe "echohl ".a:sHL
@@ -418,15 +489,15 @@ function! <SID>MoveToNextChar()
    "exe "normal! \<space>"
 endfunction
 
-function! <SID>SetCursor(lineNum, col, boolNextChar)
+function! <SID>SetCursor(lineNum, col)
    let lTmpPos    = getpos('.')
    let lTmpPos[1] = a:lineNum " lnum
    let lTmpPos[2] = a:col     " col
    call setpos('.', lTmpPos)
 
-   if a:boolNextChar
-      call <SID>MoveToNextChar()
-   endif
+   "if a:boolNextChar
+      "call <SID>MoveToNextChar()
+   "endif
 
 endfunction
 
@@ -480,7 +551,7 @@ function! <SID>SearchPosFields(sPattern, sFlags, iStopLine, lFields)
 
       while lRet[0] == 0 && ((!boolBackward && iFieldIndex < len(a:lFields)) || (boolBackward && iFieldIndex >= 0))
          if !boolFirst
-            call <SID>SetCursor(a:lFields[iFieldIndex][ iFieldStartIdx ], 0, 0)
+            call <SID>SetCursor(a:lFields[iFieldIndex][ iFieldStartIdx ], 0)
          endif
 
          if a:iStopLine > 0
@@ -519,7 +590,7 @@ function! <SID>SearchPosFields(sPattern, sFlags, iStopLine, lFields)
    endif
 
    if boolDontMoveCursor
-      call <SID>SetCursor(lSrcPos[1], lSrcPos[2], 0)
+      call <SID>SetCursor(lSrcPos[1], lSrcPos[2])
    endif
 
    return lRet
@@ -532,7 +603,7 @@ function! <SID>GetMatchablesList(lFields, iStopLine)
    let lSrcPos = getpos('.')
    let lFields = a:lFields
 
-   call <SID>SetCursor(0, 0, 0)
+   call <SID>SetCursor(0, 0)
 
    let lRet = []
 
@@ -571,7 +642,7 @@ function! <SID>GetMatchablesList(lFields, iStopLine)
                            "\     'end_pos'  : [ lLowerPos[1], lLowerPos[2] ],
                   call add(lRet, dFoundItem)
 
-                  call <SID>SetCursor(lCurSearchPos[0], lCurSearchPos[1], 0)
+                  call <SID>SetCursor(lCurSearchPos[0], lCurSearchPos[1])
                   call searchpos(dItemType['data']['detect_data']['start_regexp'], 'ceW')
                   normal! j
                   "call <SID>MoveToNextChar()
@@ -611,7 +682,7 @@ function! <SID>GetSectionsForOneRegion(lItems, iIndex, iLineNum, iCol, iStopLine
 
       if dItemType['data']['detect_type'] == 'section'
 
-         call <SID>SetCursor( a:iLineNum, a:iCol, 0 )
+         call <SID>SetCursor( a:iLineNum, a:iCol)
 
          "let lCurSearchPos = searchpos(dItemType['data']['detect_data']['regexp'], 'bnW', a:iStopLine)
          let lCurSearchPos = <SID>SearchPosFields(dItemType['data']['detect_data']['regexp'], 'bnW', a:iStopLine, a:lFields)
@@ -679,8 +750,9 @@ function! <SID>GetLocationPathList()
 
    let lSrcPos = getpos('.')
    let iSrcFirstVisibleLine = line('w0')
+   let lSrcFoldsState = <SID>GetFoldsState(1, lSrcPos[1])
 
-   call <SID>SetCursor(0, 0, 0)
+   call <SID>SetCursor(0, 0)
 
    let lFields = [ [1, lSrcPos[1] ] ]
 
@@ -695,23 +767,31 @@ function! <SID>GetLocationPathList()
       call <SID>GetSections(lItems, lSrcPos[1], lFields)
    endif
 
-   call setpos('.', lSrcPos)
-
-   " restore scroll position
-   let iCurFirstVisibleLine = line('w0')
-   "echo "cur_vis_line: ".line('w0')
-   "echo "needed: ".iSrcFirstVisibleLine
-   if iCurFirstVisibleLine > iSrcFirstVisibleLine
-      exe "normal! ".(iCurFirstVisibleLine - iSrcFirstVisibleLine)."\<C-Y>"
-      "echo "normal! ".(iCurFirstVisibleLine - iSrcFirstVisibleLine)."\<C-Y>"
-   elseif iCurFirstVisibleLine < iSrcFirstVisibleLine
-      exe "normal! ".(iSrcFirstVisibleLine - iCurFirstVisibleLine)."\<C-E>"
-      "echo "normal! ".(iSrcFirstVisibleLine - iCurFirstVisibleLine)."\<C-E>"
-   endif
-   "echo "cur_vis_line: ".line('w0')
+   " restore folds state
+   call <SID>RestoreFoldsState(lSrcFoldsState)
 
    " restore cursor position
    call setpos('.', lSrcPos)
+
+   " restore scroll position
+
+   "let iCurFirstVisibleLine = line('w0')
+   "if iCurFirstVisibleLine > iSrcFirstVisibleLine
+      "exe "normal! ".(iCurFirstVisibleLine - iSrcFirstVisibleLine)."\<C-Y>"
+   "elseif iCurFirstVisibleLine < iSrcFirstVisibleLine
+      "exe "normal! ".(iSrcFirstVisibleLine - iCurFirstVisibleLine)."\<C-E>"
+   "endif
+
+   let iCurFirstVisibleLine = line('w0')
+   let sCommand = (iCurFirstVisibleLine > iSrcFirstVisibleLine ? "\<C-Y>" : "\<C-E>")
+   while line('w0') != iSrcFirstVisibleLine
+      "call confirm( "normal! ".(iCurFirstVisibleLine > iSrcFirstVisibleLine ? "<C-Y>" : "<C-E>"))
+      exe "normal! ".sCommand
+   endwhile
+
+   " restore cursor position again (buggy without this)
+   call setpos('.', lSrcPos)
+
 
    return lItems
 

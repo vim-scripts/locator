@@ -72,7 +72,7 @@ This plugin is extremely helpful in large files, especially in Java classes
 with nested classes, etc. Hope you like it too.
 
 This plugin is completely usable, but just keep in mind it is still in
-development stage. See |locator-known-issues|.
+development stage.
 
 ========================================================================
 OPTIONS                                                  *locator-options*
@@ -118,15 +118,7 @@ in normal mode and locator will show you where currently are your cursor.
 ========================================================================
 KNOWN ISSUES                                        *locator-known-issues*
 
-1) If your file contains folds, then after   gl   command some of your closed
-   folds might become opened. Too bad that Vim doesn't have good method to
-   save/restore folds state. I have an idea how to workaround that, but I'm not
-   sure when I have time.
-
-2) Again for files contains folds: after   gl   command your buffer might become
-   scrolled up to several lines. Cursor position won't change anyway. Actually
-   this is consequence from previous issue, so, when I fix it, this one will be
-   fixed too.
+   Since Locator 1.2 there's no known issues. Let me know if you found any.
 
 
  vim:ft=help:tw=78:  
